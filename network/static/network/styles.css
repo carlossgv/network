@@ -1,0 +1,28 @@
+* {
+    box-sizing: border-box;
+}
+
+#postLabel {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#newPostDiv {
+    border: gainsboro 1px solid;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.postDiv {
+    border: gainsboro 1px solid;
+    padding: 20px;
+}
+
+.userDateDiv {
+    display: flex;
+    justify-content: space-between;
+}
+
+#likeButton {
+    margin-right: 5px;
+}
