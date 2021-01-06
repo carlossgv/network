@@ -1,7 +1,7 @@
 import json
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -33,11 +33,34 @@ def load_posts(request):
     if request.method == 'POST':
         create_post(request)
 
+    user = request.user
+
+    if user.is_authenticated:
+        isLogged = True
+        user = user.username
+    else: 
+        isLogged = False
+        user = "Anonymous"
+
     posts = Post.objects.all().order_by('-editDate')
 
-    return JsonResponse([post.serialize() for post in posts], safe=False)
+    return JsonResponse({"posts": [post.serialize() for post in posts], 
+    "isLogged": isLogged, "user": user }, safe=False)
 
+def post_details(request, post_id):
+    post = Post.objects.get(pk=post_id)
 
+    if request.method == 'PUT':
+        post = Post.objects.get(pk=post_id)
+        data = json.loads(request.body)
+        post.likes = post.likes + data['likes']
+        post.save()
+        print(post.likes)
+        print(f'like in post id ${post_id} has been updated')
+        return HttpResponse(status=204)
+
+    return JsonResponse({'post': post.serialize()}, safe=False)
+    # return JsonResponse({'post': post}, safe=False)
 
 def login_view(request):
     if request.method == "POST":

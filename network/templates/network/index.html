@@ -1,31 +1,23 @@
-{% extends "network/layout.html" %}
+{% extends "network/layout.html" %} {% block body %}
+{% if user.is_authenticated %}
+<div class="container-fluid">
+  <div id="newPostDiv">
+    <form method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label id="postLabel" for="postBody">New Post</label>
+        <textarea
+          class="form-control"
+          name="postBody"
+          id="postBody"
+          placeholder="Write post"
+        ></textarea>
+      </div>
+      <input type="submit" class="btn btn-primary" value="Post" />
+    </form>
+  </div>
+</div>
+{% endif %}
 
-{% block body %}
-    {% if user.is_authenticated %}
-    <div class="container-fluid">
-        <div id="newPostDiv">
-            <form method="POST">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label id="postLabel" for='postBody'>New Post</label>
-                    <textarea class="form-control" name='postBody' id='postBody' placeholder="Write post"></textarea> 
-                </div>
-                <input type="submit" class="btn btn-primary" value="Post">
-            </form>
-        </div>
-    </div>
-    {% endif %}
-    
-    <div id="posts" class="container-fluid">
-
-    </div>
-    
-    <!-- {% if user.is_authenticated %}
-    <div id="likeButtonDiv"></div>
-    {% endif %}
-    {% if request.user %}
-        <div id="editButtonDiv"></div>
-    {% endif %} -->
-
-
+<div id="posts" class="container-fluid"></div>
 {% endblock %}
