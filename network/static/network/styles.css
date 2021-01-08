@@ -13,6 +13,24 @@
   margin-bottom: 20px;
 }
 
+.poster {
+  cursor: pointer;
+}
+
+.profileDiv {
+  padding: 20px;
+  background-color: gainsboro;
+}
+
+#follow_button {
+  width: 100%;
+}
+
+.userDiv {
+  display: flex;
+  justify-content: space-between;
+}
+
 .postDiv {
   border: gainsboro 1px solid;
   padding: 20px;

@@ -1,5 +1,9 @@
-{% extends "network/layout.html" %} {% block body %}
+{% extends "network/layout.html" %}
+<!-- text -->
+{% block body %}
+<!-- text -->
 {% if user.is_authenticated %}
+<!-- text -->
 <div class="container-fluid">
   <div id="newPostDiv">
     <form method="POST">
@@ -17,7 +21,27 @@
     </form>
   </div>
 </div>
+
 {% endif %}
+
+<div id="userProfile" class="container-fluid">
+  <div class="profileDiv">
+    <div class="userDiv">
+      <div id="profileDiv">
+        <h3 id="profile_username"></h3>
+      </div>
+      <div id="followingDiv">
+        <h7 id="profile_following"></h7>
+        <h7 id="profile_followers"></h7>
+      </div>
+    </div>
+    {% if user.is_authenticated %}
+    <div id="follow_button_div">
+      <button id="follow_button" class="btn btn-primary">Follow</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
 
 <div id="posts" class="container-fluid"></div>
 {% endblock %}
