@@ -1,14 +1,27 @@
-document.addEventListener('DOMContentLoaded', function () {
-  if (document.querySelector('form') !== null) {
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.querySelector('form') != null) {
     document.querySelector('form').onsubmit = create_post;
   }
 
-  if (document.querySelector('#likeButton') !== null) {
+  if (document.querySelector('#likeButton') != null) {
     document.querySelectorAll('#likeButton').onclick = like_post();
   }
 
-  if (document.querySelector('#userProfile') !== null) {
+  if (document.querySelector('#userProfile') != null) {
     document.querySelector('#userProfile').style.display = 'none';
+  }
+
+  if (document.querySelector('#following_nav_link') != null) {
+    document.querySelector('#following_nav_link').onclick = () =>
+      load_posts('', true);
+  }
+
+  if (document.querySelector('#hasPrevious') != null) {
+    document.querySelector('#hasPrevious').style.display = 'none';
+  }
+
+  if (document.querySelector('#hasNext') != null) {
+    document.querySelector('#hasNext').style.display = 'none';
   }
 
   load_posts();
@@ -58,7 +71,7 @@ function create_post() {
 
   let csrftoken = getCookie('csrftoken');
 
-  fetch('/posts', {
+  fetch('/create_post/', {
     method: 'POST',
     headers: {
       'X-CSRFToken': csrftoken,
@@ -68,14 +81,54 @@ function create_post() {
     }),
   })
     .then((response) => response.json())
-    .then((result) => {
+    .then(() => {
       load_posts();
     });
 
   return false;
 }
 
-function load_posts(username = '') {
+function create_pagination(totalPages, hasNext, hasPrevious, currentPage) {
+  console.log(currentPage);
+  if (document.querySelector('.page-number') != null) {
+    document.querySelectorAll('.page-number').forEach((e) => e.remove());
+  }
+
+  for (let i = 1; i < totalPages + 1; i++) {
+    let previousDiv = document.querySelector('#hasPrevious');
+    let nextDiv = document.querySelector('#hasNext');
+    let parentDiv = document.querySelector('#pagination');
+
+    previousDiv.style.display = 'none';
+    nextDiv.style.display = 'none';
+
+    if (hasPrevious) {
+      previousDiv.style.display = 'block';
+    }
+    if (hasNext) {
+      nextDiv.style.display = 'block';
+    }
+
+    pageItemDiv = document.createElement('li');
+    pageItemDiv.classList.add('page-item');
+    if (i === currentPage) {
+      pageItemDiv.style.backgroundColor = 'lightcyan';
+    }
+    pageItemDiv.classList.add('page-link');
+    pageItemDiv.classList.add('page-number');
+
+    pageItemNumber = document.createElement('a');
+    pageItemNumber.id = `${i}`;
+    pageItemNumber.innerHTML = `${i}`;
+    pageItemNumber.onclick = () => load_posts(undefined, undefined, i);
+
+    pageItemDiv.appendChild(pageItemNumber);
+
+    parentDiv.insertBefore(pageItemDiv, nextDiv);
+  }
+}
+
+function load_posts(username = '', following = false, currentPage = 1) {
   if (document.querySelector('#postBody') !== null) {
     document.querySelector('#postBody').value = '';
   }
@@ -83,30 +136,128 @@ function load_posts(username = '') {
     document.querySelector('#posts').innerHTML = '';
   }
 
-  fetch(`/posts/${username}`)
-    .then((response) => response.json())
-    .then((element) => {
-      let isLogged = element.isLogged;
-      let currentUser = element.currentUser;
-      let isProfile = element.isProfile;
-      console.log(element);
-      element.posts.forEach((element) =>
-        create_post_div(element, isLogged, currentUser, isProfile)
-      );
-    });
+  console.log(`currentPage inside load ${currentPage}`);
+  let csrftoken = getCookie('csrftoken');
+  fetch(`/posts/${currentPage}`, {
+    method: 'PUT',
+    headers: {
+      'X-CSRFToken': csrftoken,
+    },
+    body: JSON.stringify({
+      currentPage: currentPage,
+    }),
+  });
+
+  if (following === true) {
+    fetch(`following/`)
+      .then((response) => response.json())
+      .then((element) => {
+        let isLogged = element.isLogged;
+        let currentUser = element.currentUser;
+        let isProfile = element.isProfile;
+        let hasNext = element.hasNext;
+        let hasPrevious = element.hasPrevious;
+        let totalPages = element.totalPages;
+        console.log(element);
+        create_pagination(totalPages, hasNext, hasPrevious, currentPage);
+        element.posts.forEach((element) =>
+          create_post_div(
+            element,
+            isLogged,
+            currentUser,
+            isProfile,
+            currentPage
+          )
+        );
+      });
+  } else {
+    if (username === '') {
+      fetch(`posts/${currentPage}`)
+        .then((response) => response.json())
+        .then((element) => {
+          let isLogged = element.isLogged;
+          let currentUser = element.currentUser;
+          let isProfile = element.isProfile;
+          let hasNext = element.hasNext;
+          let hasPrevious = element.hasPrevious;
+          let totalPages = element.totalPages;
+          console.log(element);
+          create_pagination(totalPages, hasNext, hasPrevious, currentPage);
+          element.posts.forEach((element) =>
+            create_post_div(
+              element,
+              isLogged,
+              currentUser,
+              isProfile,
+              currentPage
+            )
+          );
+        });
+    } else {
+      fetch(`profile/${username}`)
+        .then((response) => response.json())
+        .then((element) => {
+          let isLogged = element.isLogged;
+          let currentUser = element.currentUser;
+          let isProfile = element.isProfile;
+          let hasNext = element.hasNext;
+          let hasPrevious = element.hasPrevious;
+          let totalPages = element.totalPages;
+          console.log(element);
+          create_pagination(totalPages, hasNext, hasPrevious, currentPage);
+          element.posts.forEach((element) =>
+            create_post_div(
+              element,
+              isLogged,
+              currentUser,
+              isProfile,
+              currentPage
+            )
+          );
+        });
+    }
+  }
 }
 
-function followUser(username, currentUser) {}
+function followUser(username, currentUser) {
+  let csrftoken = getCookie('csrftoken');
+  let followButton = document.querySelector('#follow_button');
+
+  let toFollow;
+
+  if (followButton.innerHTML === 'Follow') {
+    toFollow = true;
+    followButton.innerHTML = 'Unfollow';
+  } else {
+    toFollow = false;
+    followButton.innerHTML = 'Follow';
+  }
+
+  fetch('/follow/', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrftoken,
+    },
+    body: JSON.stringify({
+      username: username,
+      currentUser: currentUser,
+      toFollow: toFollow,
+    }),
+  })
+    .then((response) => response.json())
+    .then(() => show_profile(username, currentUser));
+}
 
 // username is the profile visited
 function show_profile(username, currentUser) {
-  fetch(`/posts/${username}`)
+  fetch(`/profile/${username}`)
     .then((response) => response.json())
     .then((profile) => {
       let profileFollowers = profile.followers;
       let profileFollowing = profile.following;
+      let isFollowed = profile.isFollowed;
 
-      fetch(`/posts/${currentUser}`)
+      fetch(`/profile/${currentUser}`)
         .then((response) => response.json())
         .then((element) => {
           console.log(element.isLogged, element.user, element.isProfile);
@@ -135,6 +286,10 @@ function show_profile(username, currentUser) {
           followers = document.querySelector('#profile_followers');
           followers.innerHTML = `Followers: ${profileFollowers}`;
           followers.onclick = 'nothing yet';
+
+          if (isFollowed === true) {
+            followButton.innerHTML = 'Unfollow';
+          }
         });
     });
 

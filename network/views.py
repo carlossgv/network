@@ -5,12 +5,11 @@ from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from .models import User, Post, Like, Follow
 
 
 def index(request):
-    if request.method == "POST":
-        print("I ENTER TO CREATE POST")
 
     return render(request, "network/index.html")
 
@@ -19,6 +18,7 @@ def user_site(request, username):
     profileInfo = User.objects.get(username=username)
     posts = Post.objects.filter(poster=profileInfo).all()
     user = request.user
+    userInfo = User.objects.get(username=user.username)
     isProfile = True
 
     if user.is_authenticated:
@@ -31,14 +31,58 @@ def user_site(request, username):
     followers = Follow.objects.filter(following=profileInfo).count()
     following = Follow.objects.filter(follower=profileInfo).count()
 
+    if Follow.objects.filter(follower=userInfo, following=profileInfo).exists():
+        isFollowed = True
+    else:
+        isFollowed = False
+
     return JsonResponse(
         {
             "posts": [post.serialize() for post in posts],
             "isLogged": isLogged,
             "user": user,
             "isProfile": isProfile,
-            'following': following,
-            'followers': followers
+            "following": following,
+            "followers": followers,
+            "isFollowed": isFollowed,
+        },
+        safe=False,
+    )
+
+
+def follow_func(request):
+    data = json.loads(request.body)
+
+    toFollow = data["toFollow"]
+    follower = User.objects.get(username=data["currentUser"])
+    following = User.objects.get(username=data["username"])
+
+    if toFollow == True:
+        follow = Follow(follower=follower, following=following)
+        follow.save()
+    else:
+        follow = Follow.objects.get(follower=follower, following=following)
+        follow.delete()
+
+    return JsonResponse({"message": "Following updated"}, status=201)
+
+
+def following_posts(request):
+    currentUser = User.objects.get(username=request.user)
+    user = request.user
+    followedUsers = Follow.objects.filter(follower=currentUser)
+    followedList = []
+
+    for followed in followedUsers:
+        followedList.append(followed.following.pk)
+
+    followedPosts = Post.objects.filter(poster__in=followedList).order_by("-createDate")
+
+    return JsonResponse(
+        {
+            "posts": [post.serialize() for post in followedPosts],
+            "isLogged": True,
+            "isProfile": False,
         },
         safe=False,
     )
@@ -46,21 +90,22 @@ def user_site(request, username):
 
 @login_required
 def create_post(request):
-    print("I ENTER TO CREATE POST")
-    data = json.loads(request.body)
-
-    poster = request.user
-    body = data.get("body", "")
-    new_post = Post(poster=poster, body=body)
-    new_post.save()
-
-    return JsonResponse({"message": "Post sent successfully."}, status=201)
-
-
-def load_posts(request):
-
     if request.method == "POST":
-        create_post(request)
+        data = json.loads(request.body)
+
+        poster = request.user
+        body = data.get("body", "")
+        new_post = Post(poster=poster, body=body)
+        new_post.save()
+
+        return JsonResponse({"message": "Post sent successfully."}, status=201)
+
+
+def post_pagination(request, page_number=1):
+    if request.method == "PUT":
+        data = json.loads(request.body)
+        page_number = int(data["currentPage"])
+        print(f"page #after put {page_number}")
 
     user = request.user
 
@@ -71,7 +116,19 @@ def load_posts(request):
         isLogged = False
         user = "Anonymous"
 
-    posts = Post.objects.all().order_by("-createDate")
+    postsQuery = Post.objects.all().order_by("-createDate")
+    postsQuery = Paginator(postsQuery, 10)
+
+    posts = postsQuery.page(page_number).object_list
+    print(posts)
+
+    currentPagePagination = postsQuery.page(page_number)
+
+    hasNext = currentPagePagination.has_next()
+
+    hasPrevious = currentPagePagination.has_previous()
+
+    totalPages = postsQuery.num_pages
 
     isProfile = False
 
@@ -80,11 +137,57 @@ def load_posts(request):
             "isLogged": isLogged,
             "currentUser": user,
             "isProfile": isProfile,
-            "posts": [post.serialize() for post in posts]
-
+            "posts": [post.serialize() for post in posts],
+            "totalPages": totalPages,
+            "hasNext": hasNext,
+            "hasPrevious": hasPrevious,
         },
         safe=False,
     )
+
+
+# def load_posts(request):
+
+#     currentPage = 1
+
+#     user = request.user
+
+#     if user.is_authenticated:
+#         isLogged = True
+#         user = user.username
+#     else:
+#         isLogged = False
+#         user = "Anonymous"
+
+#     postsQuery = Post.objects.all().order_by("-createDate")
+#     postsQuery = Paginator(postsQuery, 10)
+
+#     print(f"current page here {currentPage}")
+#     posts = postsQuery.page(currentPage).object_list
+#     print(posts)
+
+#     currentPagePagination = postsQuery.page(currentPage)
+
+#     hasNext = currentPagePagination.has_next()
+
+#     hasPrevious = currentPagePagination.has_previous()
+
+#     totalPages = postsQuery.num_pages
+
+#     isProfile = False
+
+#     return JsonResponse(
+#         {
+#             "isLogged": isLogged,
+#             "currentUser": user,
+#             "isProfile": isProfile,
+#             "posts": [post.serialize() for post in posts],
+#             "totalPages": totalPages,
+#             "hasNext": hasNext,
+#             "hasPrevious": hasPrevious,
+#         },
+#         safe=False,
+#     )
 
 
 def post_details(request, post_id):

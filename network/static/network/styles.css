@@ -2,6 +2,11 @@
   box-sizing: border-box;
 }
 
+body {
+  max-width: 800px;
+  margin: auto;
+}
+
 #postLabel {
   font-size: 20px;
   font-weight: bold;
@@ -43,4 +48,8 @@
 
 .likeButton {
   margin-right: 5px;
+}
+
+.pagination {
+  margin-top: 15px;
 }
