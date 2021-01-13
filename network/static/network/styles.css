@@ -50,6 +50,14 @@ body {
   margin-right: 5px;
 }
 
+.likeEditDiv {
+  margin-top: 5px;
+}
+
 .pagination {
   margin-top: 15px;
+}
+
+.page-number {
+  cursor: pointer;
 }

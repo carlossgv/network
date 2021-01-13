@@ -34,31 +34,45 @@ function like_post(id) {
 
   let button = document.querySelector(`#likeButton${id}`);
 
-  if (button.innerHTML != 'Unlike') {
-    fetch(`/posts/${id}`, {
+  if (button.innerHTML.includes('Likes')) {
+    fetch(`/likes/${id}`, {
       method: 'PUT',
       headers: {
         'X-CSRFToken': csrftoken,
       },
       body: JSON.stringify({
-        likes: 'like',
+        is_like: true,
       }),
     });
-
-    button.innerHTML = 'Unlike';
   } else {
-    fetch(`/posts/${id}`, {
+    fetch(`/likes/${id}`, {
       method: 'PUT',
       headers: {
         'X-CSRFToken': csrftoken,
       },
       body: JSON.stringify({
-        likes: 'unlike',
+        is_like: false,
       }),
     });
-
-    button.innerHTML = 'Like (0)';
   }
+
+  sync_likes(id);
+}
+
+function sync_likes(id) {
+  let button = document.querySelector(`#likeButton${id}`);
+  console.log(button);
+
+  fetch(`/likes/${id}`)
+    .then((response) => response.json())
+    .then((element) => {
+      console.log(`this post has ${element.likes} likes`);
+      if (element.user_liked) {
+        button.innerHTML = `Unlike (${element.likes})`;
+      } else {
+        button.innerHTML = `Likes (${element.likes})`;
+      }
+    });
 }
 
 function create_post() {
@@ -88,8 +102,45 @@ function create_post() {
   return false;
 }
 
+function edit_post(post_id) {
+  let postDiv = document.querySelector(`#postDiv${post_id}`);
+  let formDiv = document.createElement('form');
+  formDiv.innerHTML = postDiv.innerHTML;
+
+  postDiv.parentNode.replaceChild(formDiv, postDiv);
+
+  let body = document.querySelector(`#body${post_id}`);
+  let textarea = document.createElement('textarea');
+
+  textarea.innerHTML = body.innerHTML;
+  textarea.classList.add('form-control');
+  textarea.id = 'editArea';
+  body.parentNode.replaceChild(textarea, body);
+
+  let editButton = document.querySelector(`#post${post_id}`);
+  editButton.innerHTML = 'Update post';
+
+  editButton.onclick = () => {
+    newBody = document.querySelector('#editArea').value;
+
+    let csrftoken = getCookie('csrftoken');
+    fetch(`/create_post/`, {
+      method: 'PUT',
+      headers: {
+        'X-CSRFToken': csrftoken,
+      },
+      body: JSON.stringify({
+        post_id: post_id,
+        body: newBody,
+      }),
+    });
+
+    load_posts();
+  };
+}
+
 function create_pagination(totalPages, hasNext, hasPrevious, currentPage) {
-  console.log(currentPage);
+  console.log(`This is the current page ${currentPage}`);
   if (document.querySelector('.page-number') != null) {
     document.querySelectorAll('.page-number').forEach((e) => e.remove());
   }
@@ -104,9 +155,12 @@ function create_pagination(totalPages, hasNext, hasPrevious, currentPage) {
 
     if (hasPrevious) {
       previousDiv.style.display = 'block';
+      previousDiv.onclick = () =>
+        load_posts(undefined, undefined, currentPage - 1);
     }
     if (hasNext) {
       nextDiv.style.display = 'block';
+      nextDiv.onclick = () => load_posts(undefined, undefined, currentPage + 1);
     }
 
     pageItemDiv = document.createElement('li');
@@ -148,75 +202,31 @@ function load_posts(username = '', following = false, currentPage = 1) {
     }),
   });
 
-  if (following === true) {
-    fetch(`following/`)
-      .then((response) => response.json())
-      .then((element) => {
-        let isLogged = element.isLogged;
-        let currentUser = element.currentUser;
-        let isProfile = element.isProfile;
-        let hasNext = element.hasNext;
-        let hasPrevious = element.hasPrevious;
-        let totalPages = element.totalPages;
-        console.log(element);
-        create_pagination(totalPages, hasNext, hasPrevious, currentPage);
-        element.posts.forEach((element) =>
-          create_post_div(
-            element,
-            isLogged,
-            currentUser,
-            isProfile,
-            currentPage
-          )
-        );
-      });
+  let fetchAddress;
+
+  if (following) {
+    fetchAddress = 'following/';
+  } else if (username === '') {
+    fetchAddress = `posts/${currentPage}`;
   } else {
-    if (username === '') {
-      fetch(`posts/${currentPage}`)
-        .then((response) => response.json())
-        .then((element) => {
-          let isLogged = element.isLogged;
-          let currentUser = element.currentUser;
-          let isProfile = element.isProfile;
-          let hasNext = element.hasNext;
-          let hasPrevious = element.hasPrevious;
-          let totalPages = element.totalPages;
-          console.log(element);
-          create_pagination(totalPages, hasNext, hasPrevious, currentPage);
-          element.posts.forEach((element) =>
-            create_post_div(
-              element,
-              isLogged,
-              currentUser,
-              isProfile,
-              currentPage
-            )
-          );
-        });
-    } else {
-      fetch(`profile/${username}`)
-        .then((response) => response.json())
-        .then((element) => {
-          let isLogged = element.isLogged;
-          let currentUser = element.currentUser;
-          let isProfile = element.isProfile;
-          let hasNext = element.hasNext;
-          let hasPrevious = element.hasPrevious;
-          let totalPages = element.totalPages;
-          console.log(element);
-          create_pagination(totalPages, hasNext, hasPrevious, currentPage);
-          element.posts.forEach((element) =>
-            create_post_div(
-              element,
-              isLogged,
-              currentUser,
-              isProfile,
-              currentPage
-            )
-          );
-        });
-    }
+    fetchAddress = `profile/${username}`;
   }
+
+  fetch(fetchAddress)
+    .then((response) => response.json())
+    .then((element) => {
+      let isLogged = element.isLogged;
+      let currentUser = element.currentUser;
+      let isProfile = element.isProfile;
+      let hasNext = element.hasNext;
+      let hasPrevious = element.hasPrevious;
+      let totalPages = element.totalPages;
+      console.log(element);
+      create_pagination(totalPages, hasNext, hasPrevious, currentPage);
+      element.posts.forEach((element) =>
+        create_post_div(element, isLogged, currentUser, isProfile)
+      );
+    });
 }
 
 function followUser(username, currentUser) {
@@ -297,57 +307,76 @@ function show_profile(username, currentUser) {
 }
 
 function create_post_div(element, isLogged, currentUser, isProfile) {
-  // Create postDiv
-  postDiv = document.createElement('div');
-  postDiv.classList.add('postDiv');
+  console.log(element.id);
 
-  // Create user and date div
-  posterDateDiv = document.createElement('div');
-  posterDateDiv.classList.add('userDateDiv');
-  postDiv.appendChild(posterDateDiv);
+  fetch(`likes/${element.id}`)
+    .then((response) => response.json())
+    .then((like_element) => {
+      console.log(like_element.user_liked, element.id);
+      // // Create postDiv
+      // postDiv = document.createElement('div');
+      // postDiv.classList.add('postDiv');
+      // postDiv.id = `postDiv${element.id}`;
 
-  poster = document.createElement('h5');
-  poster.classList.add('poster');
-  poster.innerHTML = element.poster;
-  poster.onclick = () => show_profile(element.poster, currentUser);
-  posterDateDiv.appendChild(poster);
+      // // Create user and date div
+      // posterDateDiv = document.createElement('div');
+      // posterDateDiv.classList.add('userDateDiv');
+      // postDiv.appendChild(posterDateDiv);
 
-  date = document.createElement('h6');
-  date.innerHTML = element.editDate;
-  posterDateDiv.appendChild(date);
+      // poster = document.createElement('h5');
+      // poster.classList.add('poster');
+      // poster.innerHTML = element.poster;
+      // poster.onclick = () => show_profile(element.poster, currentUser);
+      // posterDateDiv.appendChild(poster);
 
-  // Create body div
-  body = document.createElement('p');
-  body.innerHTML = element.body;
-  postDiv.appendChild(body);
+      // date = document.createElement('h6');
+      // date.innerHTML = element.editDate;
+      // posterDateDiv.appendChild(date);
 
-  // Create like and edit div
-  if (isLogged === true && isProfile === false) {
-    likeEditDiv = document.createElement('div');
-    likeEditDiv.classList.add('likeEditDiv');
-    likeEditDiv.innerHTML = '';
-    postDiv.appendChild(likeEditDiv);
+      // // Create body div
+      // body = document.createElement('p');
+      // body.innerHTML = element.body;
+      // body.id = `body${element.id}`;
+      // postDiv.appendChild(body);
 
-    like = document.createElement('button');
-    like.classList.add('btn');
-    like.classList.add('btn-outline-danger');
-    like.classList.add('likeButton');
-    like.id = `likeButton${element.id}`;
-    like.innerHTML = 'Like (0)';
-    likeEditDiv.appendChild(like);
+      // // Create like and edit div
+      // if (isLogged === true && isProfile === false) {
+      //   likeEditDiv = document.createElement('div');
+      //   likeEditDiv.classList.add('likeEditDiv');
+      //   likeEditDiv.innerHTML = '';
+      //   postDiv.appendChild(likeEditDiv);
 
-    like.onclick = () => like_post(element.id);
+      //   like = document.createElement('button');
+      //   like.classList.add('btn');
+      //   like.classList.add('btn-outline-danger');
+      //   like.classList.add('likeButton');
+      //   like.id = `likeButton${element.id}`;
 
-    if (element.poster === currentUser) {
-      edit = document.createElement('button');
-      edit.classList.add('btn');
-      edit.classList.add('btn-primary');
-      edit.innerHTML = 'Edit';
-      likeEditDiv.appendChild(edit);
-    }
-  }
+      //   if (like_element.user_liked) {
+      //     like.innerHTML = `Unlike (${like_element.likes})`;
+      //   } else {
+      //     like.innerHTML = `Likes (${like_element.likes})`;
+      //   }
 
-  document.querySelector('#posts').append(postDiv);
+      //   likeEditDiv.appendChild(like);
+
+      //   like.onclick = () => like_post(element.id);
+
+      //   if (element.poster === currentUser) {
+      //     edit = document.createElement('button');
+      //     edit.classList.add('btn');
+      //     edit.classList.add('btn-primary');
+      //     edit.innerHTML = 'Edit';
+      //     edit.id = `post${element.id}`;
+
+      //     edit.onclick = () => edit_post(element.id);
+
+      //     likeEditDiv.appendChild(edit);
+      //   }
+      // }
+
+      // document.querySelector('#posts').append(postDiv);
+    });
 }
 
 function getCookie(name) {
