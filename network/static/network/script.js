@@ -71,10 +71,10 @@ function sync_likes(id) {
       button_text = parseInt(button_text.slice(-2, -1));
       console.log(button_text);
 
-      if (element.user_liked) {
-        button.innerHTML = `Unlike (${button_text + 1})`;
-      } else {
+      if (button.innerHTML.includes('Unlike')) {
         button.innerHTML = `Like (${button_text - 1})`;
+      } else {
+        button.innerHTML = `Unlike (${button_text + 1})`;
       }
     });
 }

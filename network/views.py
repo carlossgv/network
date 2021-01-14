@@ -122,11 +122,11 @@ def post_pagination(request, page_number=1):
     #     page_number = int(data["currentPage"])
 
     user = request.user
-    user_id = User.objects.get(username=user)
 
     if user.is_authenticated:
         is_logged = True
         user = user.username
+        user_id = User.objects.get(username=user)
     else:
         is_logged = False
         user = "Anonymous"
@@ -141,12 +141,13 @@ def post_pagination(request, page_number=1):
         likes = Like.objects.filter(post=post.id).count()
         update_post.update(likes=likes)
 
-    for post in posts:
-        update_post = Post.objects.filter(pk=post.id)
-        if Like.objects.filter(liker=user_id, post=post.id).exists():
-            update_post.update(is_liked=True)
-        else:
-            update_post.update(is_liked=False)
+    if request.user.is_authenticated:
+        for post in posts:
+            update_post = Post.objects.filter(pk=post.id)
+            if Like.objects.filter(liker=user_id, post=post.id).exists():
+                update_post.update(is_liked=True)
+            else:
+                update_post.update(is_liked=False)
 
     current_page_pagination = posts_query.page(page_number)
 
