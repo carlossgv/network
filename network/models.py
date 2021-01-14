@@ -9,18 +9,20 @@ class User(AbstractUser):
 class Post(models.Model):
     poster = models.ForeignKey(User, on_delete=models.CASCADE, related_name="poster")
     body = models.CharField(max_length=280)
-    createDate = models.DateTimeField(auto_now_add=True)
-    editDate = models.DateTimeField(auto_now=True)
+    create_date = models.DateTimeField(auto_now_add=True)
+    edit_date = models.DateTimeField(auto_now=True)
     likes = models.IntegerField(default=0)
+    is_liked = models.BooleanField(default=False)
 
     def serialize(self):
         return {
             "id": self.id,
             "poster": self.poster.username,
             "body": self.body,
-            "createDate": self.createDate.strftime("%Y/%m/%d, %H:%M:%S"),
-            "editDate": self.editDate.strftime("%Y/%m/%d, %H:%M:%S"),
+            "create_date": self.create_date.strftime("%Y/%m/%d, %H:%M:%S"),
+            "edit_date": self.edit_date.strftime("%Y/%m/%d, %H:%M:%S"),
             "likes": self.likes,
+            "is_liked": self.is_liked,
         }
 
     def __str__(self):
@@ -32,7 +34,7 @@ class Like(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="post")
 
     def __str__(self):
-        return {"liker": self.liker, "post": self.post}
+        return f'"Liker": {self.liker}, "Post": {self.post}'
 
 
 class Follow(models.Model):

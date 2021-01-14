@@ -34,17 +34,7 @@ function like_post(id) {
 
   let button = document.querySelector(`#likeButton${id}`);
 
-  if (button.innerHTML.includes('Likes')) {
-    fetch(`/likes/${id}`, {
-      method: 'PUT',
-      headers: {
-        'X-CSRFToken': csrftoken,
-      },
-      body: JSON.stringify({
-        is_like: true,
-      }),
-    });
-  } else {
+  if (button.innerHTML.includes('Unlike')) {
     fetch(`/likes/${id}`, {
       method: 'PUT',
       headers: {
@@ -54,23 +44,37 @@ function like_post(id) {
         is_like: false,
       }),
     });
+  } else {
+    fetch(`/likes/${id}`, {
+      method: 'PUT',
+      headers: {
+        'X-CSRFToken': csrftoken,
+      },
+      body: JSON.stringify({
+        is_like: true,
+      }),
+    });
   }
 
   sync_likes(id);
 }
 
 function sync_likes(id) {
-  let button = document.querySelector(`#likeButton${id}`);
-  console.log(button);
-
   fetch(`/likes/${id}`)
     .then((response) => response.json())
     .then((element) => {
       console.log(`this post has ${element.likes} likes`);
+
+      let button = document.querySelector(`#likeButton${id}`);
+      let button_text = button.innerHTML;
+      console.log(button_text);
+      button_text = parseInt(button_text.slice(-2, -1));
+      console.log(button_text);
+
       if (element.user_liked) {
-        button.innerHTML = `Unlike (${element.likes})`;
+        button.innerHTML = `Unlike (${button_text + 1})`;
       } else {
-        button.innerHTML = `Likes (${element.likes})`;
+        button.innerHTML = `Like (${button_text - 1})`;
       }
     });
 }
@@ -190,18 +194,6 @@ function load_posts(username = '', following = false, currentPage = 1) {
     document.querySelector('#posts').innerHTML = '';
   }
 
-  console.log(`currentPage inside load ${currentPage}`);
-  let csrftoken = getCookie('csrftoken');
-  fetch(`/posts/${currentPage}`, {
-    method: 'PUT',
-    headers: {
-      'X-CSRFToken': csrftoken,
-    },
-    body: JSON.stringify({
-      currentPage: currentPage,
-    }),
-  });
-
   let fetchAddress;
 
   if (following) {
@@ -307,76 +299,69 @@ function show_profile(username, currentUser) {
 }
 
 function create_post_div(element, isLogged, currentUser, isProfile) {
-  console.log(element.id);
+  // Create postDiv
+  postDiv = document.createElement('div');
+  postDiv.classList.add('postDiv');
+  postDiv.id = `postDiv${element.id}`;
 
-  fetch(`likes/${element.id}`)
-    .then((response) => response.json())
-    .then((like_element) => {
-      console.log(like_element.user_liked, element.id);
-      // // Create postDiv
-      // postDiv = document.createElement('div');
-      // postDiv.classList.add('postDiv');
-      // postDiv.id = `postDiv${element.id}`;
+  // Create user and date div
+  posterDateDiv = document.createElement('div');
+  posterDateDiv.classList.add('userDateDiv');
+  postDiv.appendChild(posterDateDiv);
 
-      // // Create user and date div
-      // posterDateDiv = document.createElement('div');
-      // posterDateDiv.classList.add('userDateDiv');
-      // postDiv.appendChild(posterDateDiv);
+  poster = document.createElement('h5');
+  poster.classList.add('poster');
+  poster.innerHTML = element.poster;
+  poster.onclick = () => show_profile(element.poster, currentUser);
+  posterDateDiv.appendChild(poster);
 
-      // poster = document.createElement('h5');
-      // poster.classList.add('poster');
-      // poster.innerHTML = element.poster;
-      // poster.onclick = () => show_profile(element.poster, currentUser);
-      // posterDateDiv.appendChild(poster);
+  date = document.createElement('h6');
+  date.innerHTML = element.edit_date;
+  posterDateDiv.appendChild(date);
 
-      // date = document.createElement('h6');
-      // date.innerHTML = element.editDate;
-      // posterDateDiv.appendChild(date);
+  // Create body div
+  body = document.createElement('p');
+  body.innerHTML = element.body;
+  body.id = `body${element.id}`;
+  postDiv.appendChild(body);
 
-      // // Create body div
-      // body = document.createElement('p');
-      // body.innerHTML = element.body;
-      // body.id = `body${element.id}`;
-      // postDiv.appendChild(body);
+  // Create like and edit div
+  if (isLogged === true && isProfile === false) {
+    likeEditDiv = document.createElement('div');
+    likeEditDiv.classList.add('likeEditDiv');
+    likeEditDiv.innerHTML = '';
+    postDiv.appendChild(likeEditDiv);
 
-      // // Create like and edit div
-      // if (isLogged === true && isProfile === false) {
-      //   likeEditDiv = document.createElement('div');
-      //   likeEditDiv.classList.add('likeEditDiv');
-      //   likeEditDiv.innerHTML = '';
-      //   postDiv.appendChild(likeEditDiv);
+    like = document.createElement('button');
+    like.classList.add('btn');
+    like.classList.add('btn-outline-danger');
+    like.classList.add('likeButton');
+    like.id = `likeButton${element.id}`;
 
-      //   like = document.createElement('button');
-      //   like.classList.add('btn');
-      //   like.classList.add('btn-outline-danger');
-      //   like.classList.add('likeButton');
-      //   like.id = `likeButton${element.id}`;
+    if (element.is_liked) {
+      like.innerHTML = `Unlike (${element.likes})`;
+    } else {
+      like.innerHTML = `Like (${element.likes})`;
+    }
 
-      //   if (like_element.user_liked) {
-      //     like.innerHTML = `Unlike (${like_element.likes})`;
-      //   } else {
-      //     like.innerHTML = `Likes (${like_element.likes})`;
-      //   }
+    likeEditDiv.appendChild(like);
 
-      //   likeEditDiv.appendChild(like);
+    like.onclick = () => like_post(element.id);
 
-      //   like.onclick = () => like_post(element.id);
+    if (element.poster === currentUser) {
+      edit = document.createElement('button');
+      edit.classList.add('btn');
+      edit.classList.add('btn-primary');
+      edit.innerHTML = 'Edit';
+      edit.id = `post${element.id}`;
 
-      //   if (element.poster === currentUser) {
-      //     edit = document.createElement('button');
-      //     edit.classList.add('btn');
-      //     edit.classList.add('btn-primary');
-      //     edit.innerHTML = 'Edit';
-      //     edit.id = `post${element.id}`;
+      edit.onclick = () => edit_post(element.id);
 
-      //     edit.onclick = () => edit_post(element.id);
+      likeEditDiv.appendChild(edit);
+    }
+  }
 
-      //     likeEditDiv.appendChild(edit);
-      //   }
-      // }
-
-      // document.querySelector('#posts').append(postDiv);
-    });
+  document.querySelector('#posts').append(postDiv);
 }
 
 function getCookie(name) {

@@ -117,11 +117,12 @@ def create_post(request):
 
 
 def post_pagination(request, page_number=1):
-    if request.method == "PUT":
-        data = json.loads(request.body)
-        page_number = int(data["currentPage"])
+    # if request.method == "PUT":
+    #     data = json.loads(request.body)
+    #     page_number = int(data["currentPage"])
 
     user = request.user
+    user_id = User.objects.get(username=user)
 
     if user.is_authenticated:
         is_logged = True
@@ -130,10 +131,22 @@ def post_pagination(request, page_number=1):
         is_logged = False
         user = "Anonymous"
 
-    posts_query = Post.objects.all().order_by("-createDate")
+    posts_query = Post.objects.all().order_by("-create_date")
     posts_query = Paginator(posts_query, 10)
 
-    posts = posts_query.page(page_number).object_list
+    posts = posts_query.page(page_number)
+
+    for post in posts:
+        update_post = Post.objects.filter(pk=post.id)
+        likes = Like.objects.filter(post=post.id).count()
+        update_post.update(likes=likes)
+
+    for post in posts:
+        update_post = Post.objects.filter(pk=post.id)
+        if Like.objects.filter(liker=user_id, post=post.id).exists():
+            update_post.update(is_liked=True)
+        else:
+            update_post.update(is_liked=False)
 
     current_page_pagination = posts_query.page(page_number)
 
